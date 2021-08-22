@@ -4,6 +4,7 @@ package io.github.kimmking.gateway.outbound.httpclient4;
 import io.github.kimmking.gateway.filter.HeaderHttpResponseFilter;
 import io.github.kimmking.gateway.filter.HttpRequestFilter;
 import io.github.kimmking.gateway.filter.HttpResponseFilter;
+import io.github.kimmking.gateway.filter.MyHttpRequestFilter;
 import io.github.kimmking.gateway.router.HttpEndpointRouter;
 import io.github.kimmking.gateway.router.RandomHttpEndpointRouter;
 import io.netty.buffer.Unpooled;
@@ -37,9 +38,10 @@ public class HttpOutboundHandler {
     private CloseableHttpAsyncClient httpclient;
     private ExecutorService proxyService;
     private List<String> backendUrls;
-
+    private MyHttpClient myHttpClient = new MyHttpClient();
     HttpResponseFilter filter = new HeaderHttpResponseFilter();
     HttpEndpointRouter router = new RandomHttpEndpointRouter();
+    MyHttpRequestFilter myHttpRequestFilter = new MyHttpRequestFilter();
 
     public HttpOutboundHandler(List<String> backends) {
 
@@ -75,7 +77,9 @@ public class HttpOutboundHandler {
     public void handle(final FullHttpRequest fullRequest, final ChannelHandlerContext ctx, HttpRequestFilter filter) {
         String backendUrl = router.route(this.backendUrls);
         final String url = backendUrl + fullRequest.uri();
-        filter.filter(fullRequest, ctx);
+        //filter.filter(fullRequest, ctx);
+        //替换成自己的过滤器
+        myHttpRequestFilter.filter(fullRequest,ctx);
         proxyService.submit(()->fetchGet(fullRequest, ctx, url));
     }
     
@@ -93,16 +97,16 @@ public class HttpOutboundHandler {
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
-                    
+
                 }
             }
-            
+
             @Override
             public void failed(final Exception ex) {
                 httpGet.abort();
                 ex.printStackTrace();
             }
-            
+
             @Override
             public void cancelled() {
                 httpGet.abort();
